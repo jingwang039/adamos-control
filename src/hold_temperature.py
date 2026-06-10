@@ -8,23 +8,23 @@ This is different from the sweep: it does NOT cool back down on exit. The PTC1
 keeps regulating to the setpoint on its own (in firmware), so the plate stays
 at temperature even after this program finishes and even if you close Python.
 
-Usage:
-    python hold_temperature.py 35 --port /dev/cu.usbserial-02323293
-    python hold_temperature.py 35 --sim          (offline test, no hardware)
+Usage (via main.py):
+    python main.py hold 35 --port /dev/cu.usbserial-02323293
+    python main.py hold 35 --sim          (offline test, no hardware)
 
 Options:
     --no-wait   set the target and exit at once, without waiting for it to arrive
 
 WHEN YOU ARE DONE with your experiment, return the plate to a resting state --
 either set it back to room temperature or power the unit off, e.g.:
-    python hold_temperature.py 25 --port /dev/cu.usbserial-02323293
+    python main.py hold 25 --port /dev/cu.usbserial-02323293
 """
 
 import argparse
 import logging
 import time
 
-from Thorlabs_PTC1_Breadboard import thorlabs_ptc1
+from .Thorlabs_PTC1_Breadboard import thorlabs_ptc1
 
 
 # How we confirm the plate has actually reached the target before saying so.
@@ -83,12 +83,17 @@ def main():
     logger = logging.getLogger("hold")
 
     if args.sim:
-        from test_ptc1_sim import MockPTC1Serial
+        from .simulator import MockPTC1Serial
         plate = thorlabs_ptc1(port="SIM", logger=logger, ser=MockPTC1Serial())
     elif args.port:
         plate = thorlabs_ptc1(port=args.port, logger=logger)
     else:
-        parser.error("give --port <device> for real hardware, or --sim to simulate")
+        from .port_detection import detect_new_port
+        try:
+            port = detect_new_port()
+        except TimeoutError as exc:
+            parser.error(str(exc))
+        plate = thorlabs_ptc1(port=port, logger=logger)
 
     try:
         # The driver refuses (raises ValueError) any out-of-range temperature.
@@ -116,7 +121,3 @@ def main():
         plate.close_connection(go_to_safe_state=False)
         logger.info("Disconnected. The plate holds %.3f C until you change it "
                     "or power off.", args.temperature)
-
-
-if __name__ == "__main__":
-    main()

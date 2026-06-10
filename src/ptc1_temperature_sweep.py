@@ -12,11 +12,9 @@ For each target temperature it:
 
 At the end it returns the plate to a safe temperature and closes the port.
 
-Run against the SIMULATOR (no hardware):
-    python ptc1_temperature_sweep.py --sim
-
-Run on the REAL device:
-    python ptc1_temperature_sweep.py --port /dev/cu.usbserial-02323293
+Usage (via main.py):
+    python main.py sweep --sim
+    python main.py sweep --port /dev/cu.usbserial-02323293
 """
 
 import argparse
@@ -25,7 +23,7 @@ import logging
 import time
 from datetime import datetime
 
-from Thorlabs_PTC1_Breadboard import thorlabs_ptc1
+from .Thorlabs_PTC1_Breadboard import thorlabs_ptc1
 
 
 # ============================ EDIT THESE ============================
@@ -124,19 +122,20 @@ def main():
     logger = logging.getLogger("sweep")
 
     if args.sim:
-        from test_ptc1_sim import MockPTC1Serial
+        from .simulator import MockPTC1Serial
         plate = thorlabs_ptc1(port="SIM", logger=logger, ser=MockPTC1Serial())
     elif args.port:
         plate = thorlabs_ptc1(port=args.port, logger=logger)
     else:
-        parser.error("give --port <device> for real hardware, or --sim to simulate")
+        from .port_detection import detect_new_port
+        try:
+            port = detect_new_port()
+        except TimeoutError as exc:
+            parser.error(str(exc))
+        plate = thorlabs_ptc1(port=port, logger=logger)
 
     try:
         run_sweep(plate, TARGETS_C, logger)
     finally:
         # Always bring the plate to a safe state, even if the sweep errors out.
         plate.close_connection()
-
-
-if __name__ == "__main__":
-    main()

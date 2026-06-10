@@ -10,18 +10,29 @@ because all it needs is the serial port the device presents.
 
 ---
 
-## The files and what each one does
+## Project layout
 
-| File | Role | Run it directly? |
-|------|------|------------------|
-| `Thorlabs_PTC1_Breadboard.py` | **The driver.** Knows how to talk to the plate (commands, units, safety limits). Everything else uses it. | No — it's imported by the others |
-| `hold_temperature.py` | Set the plate to a temperature and **hold it** for running experiments. | Yes |
-| `ptc1_temperature_sweep.py` | Step through a list of temperatures and **log** them to a CSV (characterization). | Yes |
-| `test_ptc1_sim.py` | A **simulated** plate, so you can test the scripts with no hardware. | Yes (or via `--sim`) |
+```
+main.py                          ← single entrypoint for all scripts
+src/
+    Thorlabs_PTC1_Breadboard.py  ← driver: commands, units, safety limits
+    simulator.py                 ← software-only fake device (used by --sim)
+    port_detection.py            ← auto-detects which USB port the device appeared on
+    hold_temperature.py          ← hold a temperature for experiments
+    ptc1_temperature_sweep.py    ← step through temperatures and log to CSV
+test/
+    test_driver.py
+    test_simulator.py
+    test_port_detection.py
+    test_hold_temperature.py
+    test_sweep.py
+```
 
-**Keep all four files in the same folder.** The two programs you run import the
-driver (and the simulator, when using `--sim`), so they fail immediately if the
-driver file is missing.
+Run tests (no hardware needed):
+
+```
+python3 -m unittest discover -s test -p "test_*.py" -v
+```
 
 ---
 
@@ -51,8 +62,7 @@ pip install pyserial
 
 1. Set the front-panel **MODE switch to "USB"** (not the knob/front-panel).
    In front-panel mode the device ignores everything sent over USB.
-2. Power the unit on and connect the USB cable to your computer.
-3. **Do not run the Thorlabs GUI at the same time** — only one program can use
+2. **Do not run the Thorlabs GUI at the same time** — only one program can use
    the serial port at once. (You don't need the GUI at all for these scripts.)
 
 Over USB the valid temperature range is **5 to 45 °C**. The driver refuses any
@@ -60,97 +70,106 @@ value outside that, so a typo cannot drive the plate somewhere unsafe.
 
 ---
 
-## Finding the port
-
-You need the name of the serial port the plate appears as. It differs per OS.
-
-**Linux**
-
-```
-ls /dev/ttyUSB*
-```
-
-Usually `/dev/ttyUSB0`. If you get a "permission denied" error when running a
-script, add yourself to the `dialout` group once, then log out and back in:
-
-```
-sudo usermod -a -G dialout $USER
-```
-
-**macOS**
-
-```
-ls /dev/cu.usbserial*
-```
-
-Something like `/dev/cu.usbserial-02323293`. **Use the `cu.` name, not the
-`tty.` one** — the `tty.` version will hang on opening.
-
-**Windows**
-
-Open **Device Manager → Ports (COM & LPT)**. The plate appears as a
-"USB Serial Port" with a name like `COM4`. Use that name (e.g. `COM4`) as the
-port. If no COM port appears, install the **FTDI VCP driver** (from Thorlabs or
-ftdichip.com) — but you still do not need to launch the Thorlabs GUI.
-
----
-
 ## Usage
 
-In the examples below, replace the port with your own (see above). On Windows,
-use `python` instead of `python3`, and your `COMx` name instead of the
-`/dev/...` path.
+All scripts are run through `main.py`. On Windows use `python` instead of
+`python3` and your `COMx` name for the port.
+
+There are three ways to tell the script which port to use:
+
+| Method | When to use |
+|--------|-------------|
+| No port argument | **Recommended.** The script prompts you to plug in the device and finds the port automatically. |
+| `--port PORT` | You already know the port name (e.g. from a previous run). |
+| `--sim` | No hardware — runs against a built-in software simulator. |
 
 ### Hold the plate at a temperature (for experiments)
 
-The target temperature is the **first thing after the filename**:
+**Auto-detect the port (not yet implemented):**
 
 ```
-python3 hold_temperature.py 35 --port /dev/cu.usbserial-02323293
+python3 main.py hold 35
 ```
 
-This sets 35 °C, waits until the plate reaches and holds it, then disconnects
-**leaving the plate at 35 °C**. The controller keeps regulating on its own, so
-the plate stays warm even after the program ends and even if you close the
-terminal. Decimals are fine (e.g. `32.5`). Add `--no-wait` to set the target
-and exit at once without waiting for confirmation.
+The script prints `Plug the PTC1 into a USB port now ...` and waits. Plug the
+device in; it detects the new port automatically and continues. You have 60
+seconds to connect the device before it times out.
 
-**When you finish your experiment, return the plate to a resting state** — set
-it back down or power the unit off:
+**Explicit port:**
 
 ```
-python3 hold_temperature.py 25 --port /dev/cu.usbserial-02323293
+python3 main.py hold 35 --port /dev/cu.usbserial-02323293
+```
+
+Both forms set 35 °C, wait until the plate reaches and holds it, then
+disconnect **leaving the plate at 35 °C**. The controller keeps regulating on
+its own, so the plate stays warm even after the program ends. Decimals are fine
+(e.g. `32.5`). Add `--no-wait` to set the target and exit immediately without
+waiting for confirmation.
+
+**When you finish your experiment, return the plate to a resting state:**
+
+```
+python3 main.py hold 25
 ```
 
 ### Run a logged temperature sweep (for characterization)
 
-Edit the list of temperatures at the top of `ptc1_temperature_sweep.py`:
+Edit the list of temperatures at the top of `src/ptc1_temperature_sweep.py`:
 
 ```python
 TARGETS_C = [24.0, 25.0, 26.0]
 ```
 
-Then run it:
+**Auto-detect the port:**
 
 ```
-python3 ptc1_temperature_sweep.py --port /dev/cu.usbserial-02323293
+python3 main.py sweep
 ```
 
-It visits each temperature, waits for it to settle, writes a row to
-`sweep_results.csv`, and at the end **returns the plate to 25 °C** (this is the
-opposite of `hold_temperature.py` — the sweep is for measuring, not for holding
-a plate for experiments). Settling rule and timing are constants at the top of
-the file.
+**Explicit port:**
+
+```
+python3 main.py sweep --port /dev/cu.usbserial-02323293
+```
+
+The sweep visits each temperature, waits for it to settle, writes a row to
+`sweep_results.csv`, and at the end **returns the plate to 25 °C**. Settling
+rule and timing are constants at the top of `src/ptc1_temperature_sweep.py`.
 
 ### Test without hardware
 
-Any script can run against the simulator with `--sim` instead of `--port`:
+Both scripts accept `--sim` to run against the built-in software simulator:
 
 ```
-python3 hold_temperature.py 35 --sim
-python3 ptc1_temperature_sweep.py --sim
-python3 test_ptc1_sim.py
+python3 main.py hold 35 --sim
+python3 main.py sweep --sim
 ```
+
+### Finding the port manually
+
+If you need the port name (e.g. to pass `--port`):
+
+**Linux** — usually `/dev/ttyUSB0`:
+```
+ls /dev/ttyUSB*
+```
+If you get "permission denied", add yourself to the `dialout` group once, then
+log out and back in:
+```
+sudo usermod -a -G dialout $USER
+```
+
+**macOS** — something like `/dev/cu.usbserial-02323293`:
+```
+ls /dev/cu.usbserial*
+```
+**Use the `cu.` name, not `tty.`** — the `tty.` version hangs on open. The
+auto-detect feature handles this correctly on its own.
+
+**Windows** — open **Device Manager → Ports (COM & LPT)**. The plate appears
+as "USB Serial Port" with a name like `COM4`. If nothing appears, install the
+**FTDI VCP driver** from Thorlabs or ftdichip.com.
 
 ---
 
