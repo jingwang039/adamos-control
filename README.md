@@ -6,9 +6,9 @@ Controls two devices:
 - **Thorlabs PTC1(/M)** temperature-controlled breadboard (via USB serial)
 - **Lakeshore 224** temperature monitor (via USB serial)
 
-The main entry point (`adamos_control/run_experiment.py`) can run either device
-alone or both together — setting the PTC1 setpoint and verifying it with the
-Lakeshore as an independent external sensor.
+The main entry point (`run_experiment.py`) can run either device alone or both
+together — setting the PTC1 setpoint and verifying it with the Lakeshore as an
+independent external sensor.
 
 ---
 
@@ -152,8 +152,6 @@ python3 main.py sweep --port /dev/ttyUSB0
 python3 main.py hold 35 --sim
 ```
 
-See `PTC1:M_CON/README.md` for full PTC1 documentation.
-
 ---
 
 ## Troubleshooting
@@ -176,3 +174,11 @@ the instrument menu (`Input → C2 → Sensor Type`).
 
 **`ModuleNotFoundError: No module named 'colorama'`**
 `pip3 install --break-system-packages colorama`
+
+**Replies come back empty (`b''`) / nothing happens.**
+Almost always the MODE switch is not on "USB", or another program (e.g. the
+Thorlabs GUI) is holding the port. Check both.
+
+**Garbled / unreadable output.**
+Usually a baud-rate mismatch. The PTC1 uses 115200 baud and the Lakeshore 224
+uses 57600 baud — both are set correctly by the drivers.
