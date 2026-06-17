@@ -28,7 +28,7 @@ import sys
 from pathlib import Path
 
 # Make the PTC1 driver importable regardless of where this script is run from.
-_PTC1_SRC = Path(__file__).parent.parent / "PTC1:M_con" / "PTC1:M_CON" / "src"
+_PTC1_SRC = Path(__file__).parent.parent / "PTC1:M_CON" / "src"
 sys.path.insert(0, str(_PTC1_SRC))
 
 
