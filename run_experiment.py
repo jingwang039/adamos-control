@@ -69,6 +69,7 @@ def cmd_hold(args, logger):
             target_c=args.temperature,
             tolerance_c=args.tolerance,
             timeout_s=args.timeout,
+            monitor_channel=args.monitor_channel,
         )
         if not reached:
             logger.warning("Setpoint is still active — plate keeps regulating.")
@@ -116,6 +117,9 @@ def main():
                         help="Serial port for Lakeshore 224 monitor.")
     hold_p.add_argument("--monitor-serial", metavar="SN", default="",
                         help="Lakeshore 224 serial number substring for ID check (optional).")
+    hold_p.add_argument("--monitor-channel", metavar="CH", default="t_c2",
+                        help="Lakeshore channel to use for verification (default t_c2). "
+                             "Choices: t_c2, t_c3, t_c4, t_c5, t_d1, t_d2, t_d3, t_d4, t_d5.")
     hold_p.add_argument("--tolerance", type=float, default=0.5, metavar="C",
                         help="Degrees C within target to count as reached (default 0.5).")
     hold_p.add_argument("--timeout", type=float, default=600.0, metavar="S",

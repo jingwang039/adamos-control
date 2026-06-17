@@ -135,7 +135,55 @@ Optional flags:
 python3 run_experiment.py monitor --monitor-port /dev/ttyUSB1
 ```
 
-Prints all channels every 5 seconds. Press Ctrl-C to stop.
+Prints all channels every 5 seconds. Press Ctrl-C to stop. Use `--interval` to
+change the polling rate:
+
+```bash
+python3 run_experiment.py monitor --monitor-port /dev/ttyUSB1 --interval 1
+```
+
+---
+
+## Lakeshore 224 temperature monitor
+
+### Available channels
+
+The monitor reads 9 input channels simultaneously:
+
+| Key | Input | Typical use |
+|-----|-------|-------------|
+| `t_c2` | C2 | Paddle surface (used by default for PTC1 verification) |
+| `t_c3` | C3 | |
+| `t_c4` | C4 | |
+| `t_c5` | C5 | |
+| `t_d1` | D1 | |
+| `t_d2` | D2 | |
+| `t_d3` | D3 | |
+| `t_d4` | D4 | |
+| `t_d5` | D5 | |
+
+Only channels with a sensor physically connected return valid readings.
+Unconnected channels read **-273.15 °C** (0 K — open circuit).
+
+### Reading a specific channel for PTC1 verification
+
+By default, `hold` uses channel C2 to verify the paddle surface temperature.
+To use a different channel pass `--monitor-channel`:
+
+```bash
+python3 run_experiment.py hold 35 \
+    --paddle-port /dev/ttyUSB0 \
+    --monitor-port /dev/ttyUSB1 \
+    --monitor-channel t_d1
+```
+
+### Sensor troubleshooting
+
+**Channel reads -273.15 °C or jumps wildly:**
+- Check the sensor cable is firmly seated in the correct input on the Lakeshore
+  front panel.
+- Verify the sensor type configured on the instrument matches the physical
+  sensor: on the Lakeshore front panel go to `Input → <channel> → Sensor Type`.
 
 ### PTC1 only (no Lakeshore)
 
