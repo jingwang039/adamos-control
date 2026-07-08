@@ -1,0 +1,6 @@
+[DEBUG] [2026-06-17 17:23:42] * check_id command entered (Lakeshore_Temperature_Monitor_224). *
+[INFO] [2026-06-17 17:23:42] Lakeshore Temperature Monitor 224 is connected.
+[DEBUG] [2026-06-17 17:23:42] * turn_off_leds command entered (Lakeshore_Temperature_Monitor_224). *
+[DEBUG] [2026-06-17 17:23:42] Front panel LEDs of Lakeshore Temperature Monitor 224 are turned OFF.
+[DEBUG] [2026-06-17 17:26:53] * close_connection command entered (Lakeshore_Temperature_Monitor_224). *
+[DEBUG] [2026-06-17 17:26:53] Lakeshore Temperature Monitor 224 connection is closed.
