@@ -118,15 +118,20 @@ python3 run_experiment.py hold 35 \
     --monitor-port /dev/ttyUSB1
 ```
 
-Waits until the Lakeshore C2 channel confirms the surface is within 0.5 °C of
-35 °C for 30 seconds, then exits leaving the plate actively regulating.
+Logs the Lakeshore C2 reading against the target every few seconds and keeps
+running — it does not exit on its own. While it's running:
+
+- Type a new temperature and press **Enter** to change the setpoint live,
+  without restarting the program.
+- Type **`q`** and press Enter (or press **Ctrl-C**) to stop; the plate keeps
+  holding its last setpoint after the script exits.
 
 Optional flags:
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--tolerance C` | 0.5 | Degrees C to count as "reached" |
-| `--timeout S` | 600 | Give up after this many seconds |
+| `--interval S` | 5 | Polling / logging interval in seconds |
 | `--monitor-serial SN` | | Lakeshore serial number substring for ID check |
 
 ### Read Lakeshore temperatures only (no PTC1)
