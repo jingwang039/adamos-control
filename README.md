@@ -20,7 +20,6 @@ adamos_control/
     experiment_session.py           ← glue layer over both drivers
     Lakeshore_Temperature_Monitor_224.py  ← Lakeshore 224 driver
     log_maker.py                    ← logging helper
-    PTC1:M/                         ← legacy standalone PTC1 scripts
 
 PTC1:M_CON/                         ← PTC1 standalone entry point
     main.py                         ← entrypoint: hold / sweep
