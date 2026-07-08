@@ -234,3 +234,9 @@ Thorlabs GUI) is holding the port. Check both.
 **Garbled / unreadable output.**
 Usually a baud-rate mismatch. The PTC1 uses 115200 baud and the Lakeshore 224
 uses 57600 baud — both are set correctly by the drivers.
+
+**Note for developers:** the PTC1 (firmware FW1.0.5) ends every command with a
+carriage return (`\r`) and every reply with a `>` prompt. This differs from the
+open-source `thorlabs-mtd415t` library, which assumes a line feed (`\n`). If
+you adapt code from that library, keep the `\r` behaviour — it's what this
+hardware actually expects.
