@@ -12,6 +12,39 @@ independent external sensor.
 
 ---
 
+## Quick start (brand-new machine)
+
+Follow these steps in order the first time you set this up on a machine.
+Each one links to more detail further down if something goes wrong.
+
+1. **Get the code:**
+   ```bash
+   git clone https://github.com/jingwang039/adamos-control.git
+   cd adamos-control/adamos_control
+   ```
+2. **Install the Python packages** — see [Requirements](#requirements):
+   ```bash
+   pip3 install --break-system-packages pyserial colorama discord-webhook
+   ```
+3. **One-time Linux hardware setup** — see [Linux hardware setup](#linux-hardware-setup):
+   add yourself to the `dialout` group and load the Lakeshore's USB driver.
+   Both are one-off; you won't need to repeat them on this machine again.
+4. **Plug in the PTC1 and/or Lakeshore 224 via USB.**
+5. **Find out which port is which:**
+   ```bash
+   python3 run_experiment.py ports
+   ```
+6. **Run it** — see [Usage](#usage) for the full command reference:
+   ```bash
+   python3 run_experiment.py hold 35 --paddle-port /dev/ttyUSB0 --monitor-port /dev/ttyUSB1
+   ```
+   (using whatever ports step 5 reported).
+
+If anything goes wrong at any step, check [Troubleshooting](#troubleshooting)
+at the bottom of this file.
+
+---
+
 ## Project layout
 
 ```
@@ -20,7 +53,6 @@ adamos_control/
     experiment_session.py           ← glue layer over both drivers
     Lakeshore_Temperature_Monitor_224.py  ← Lakeshore 224 driver
     log_maker.py                    ← logging helper
-    PTC1:M/                         ← legacy standalone PTC1 scripts
 
 PTC1:M_CON/                         ← PTC1 standalone entry point
     main.py                         ← entrypoint: hold / sweep
@@ -109,6 +141,28 @@ All commands are run from the `adamos_control/` directory:
 ```bash
 cd adamos_control
 ```
+
+### Identify connected devices (do this first)
+
+Before running anything else, find out which port each instrument is on:
+
+```bash
+python3 run_experiment.py ports
+```
+
+This lists every connected USB serial device and guesses which one is the
+PTC1 vs the Lakeshore 224, e.g.:
+
+```
+Connected USB serial devices:
+  /dev/ttyUSB0   THORLABS PTC1 - THORLABS PTC1            vid:pid=0403:6015 serial=02323293  <- looks like Thorlabs PTC1
+  /dev/ttyUSB1   Model 224 Temperature Monitor - Model 224 Temperature Monitor vid:pid=1fb9:0204 serial=LSA21X5  <- looks like Lakeshore 224
+```
+
+Use the port shown (e.g. `/dev/ttyUSB0`) for `--paddle-port` / `--monitor-port`
+below. If a device you expect doesn't show up, see
+[Linux hardware setup](#linux-hardware-setup) above (permissions, cp210x
+driver) or run `ls -la /dev/serial/by-id/` as a manual fallback.
 
 ### Hold temperature and verify with Lakeshore (both devices)
 
@@ -235,3 +289,9 @@ Thorlabs GUI) is holding the port. Check both.
 **Garbled / unreadable output.**
 Usually a baud-rate mismatch. The PTC1 uses 115200 baud and the Lakeshore 224
 uses 57600 baud — both are set correctly by the drivers.
+
+**Note for developers:** the PTC1 (firmware FW1.0.5) ends every command with a
+carriage return (`\r`) and every reply with a `>` prompt. This differs from the
+open-source `thorlabs-mtd415t` library, which assumes a line feed (`\n`). If
+you adapt code from that library, keep the `\r` behaviour — it's what this
+hardware actually expects.
