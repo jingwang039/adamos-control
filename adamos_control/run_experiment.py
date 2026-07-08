@@ -3,6 +3,9 @@ run_experiment.py
 ------------------
 Command-line entry point for temperature experiments.
 
+First, find out which port is which:
+    python run_experiment.py ports
+
 Works with either or both devices:
 
   Both devices (paddle + external monitor):
@@ -36,6 +39,59 @@ from pathlib import Path
 # Make the PTC1 driver importable regardless of where this script is run from.
 _PTC1_SRC = Path(__file__).parent.parent / "PTC1:M_CON" / "src"
 sys.path.insert(0, str(_PTC1_SRC))
+
+
+# Known device fingerprints, used by `ports` to guess which port is which.
+# The Lakeshore's vid:pid is the one registered for it in the README's
+# cp210x setup step; it's not the generic Silicon Labs default.
+LAKESHORE_VID_PID = (0x1FB9, 0x0204)
+
+
+# FTDI is the chip family Thorlabs uses in the PTC1; its USB vendor id is
+# fixed regardless of the product string.
+FTDI_VID = 0x0403
+
+
+def _guess_device(port_info):
+    """Best-effort guess of which instrument a serial.tools.list_ports entry
+    is, based on USB vendor/product id and description. Returns None if
+    unrecognized."""
+    if (port_info.vid, port_info.pid) == LAKESHORE_VID_PID:
+        return "Lakeshore 224"
+    text = " ".join(filter(None, [port_info.description, port_info.manufacturer])).upper()
+    if port_info.vid == FTDI_VID or "FTDI" in text or "THORLABS" in text:
+        return "Thorlabs PTC1"
+    if "CP210" in text or "SILICON LABS" in text:
+        return "Lakeshore 224 (unregistered cp210x id -- see README USB driver setup)"
+    return None
+
+
+def cmd_ports(args, logger):
+    """List connected USB serial devices and guess which instrument each is."""
+    import serial.tools.list_ports
+
+    # Non-USB ports (e.g. the ttyS0-31 legacy serial ports every Linux box
+    # has) report no vendor id -- they're never the PTC1 or Lakeshore, so
+    # skip them to keep the list to devices actually worth looking at.
+    ports = sorted(
+        (p for p in serial.tools.list_ports.comports() if p.vid is not None),
+        key=lambda p: p.device)
+    if not ports:
+        logger.warning(
+            "No USB serial devices found. Check the USB cables are connected "
+            "and powered, and see the README's Linux hardware setup section "
+            "(dialout group, cp210x driver) if a device you expect is missing.")
+        return
+
+    logger.info("Connected USB serial devices:")
+    for p in ports:
+        vid_pid = "%04x:%04x" % (p.vid, p.pid) if p.vid and p.pid else "?"
+        guess = _guess_device(p)
+        line = "  %-14s %-40s vid:pid=%s serial=%s" % (
+            p.device, p.description or "?", vid_pid, p.serial_number or "?")
+        if guess:
+            line += "  <- looks like %s" % guess
+        logger.info(line)
 
 
 def _build_logger():
@@ -170,6 +226,10 @@ def main():
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
+    # --- ports sub-command ---
+    sub.add_parser("ports", help="List connected USB serial devices and "
+                    "guess which is the PTC1 vs the Lakeshore 224.")
+
     # --- hold sub-command ---
     hold_p = sub.add_parser("hold", help="Set paddle temperature and hold "
                             "(setpoint can be changed live while it runs).")
@@ -198,7 +258,9 @@ def main():
     args = parser.parse_args()
     logger = _build_logger()
 
-    if args.command == "hold":
+    if args.command == "ports":
+        cmd_ports(args, logger)
+    elif args.command == "hold":
         if not args.paddle_port and not args.monitor_port:
             parser.error("Provide at least --paddle-port or --monitor-port.")
         cmd_hold(args, logger)
